@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/choiceTopics"
+        android:title="@string/topics" />
+    <item
+        android:id="@+id/choiceCountries"
+        android:title="@string/countries" />
+    <item
+        android:id="@+id/choiceLanguages"
+        android:title="@string/languages" />
+</menu>
