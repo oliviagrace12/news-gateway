@@ -11,15 +11,19 @@ import com.example.newsgateway.domain.Source;
 import com.example.newsgateway.runnables.GetSourcesRunnable;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String API_KEY = "ccd9717c681c4e59a0194a092a52a1a9";
-    private List<Source> sources = new ArrayList<>();
-    private Multimap<String, Article> articlesBySource = ArrayListMultimap.create();
+    private static final String API_KEY = "";
+    private final List<Source> sources = new ArrayList<>();
+    private final Multimap<String, Article> articlesBySource =
+            Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
+    private Multimap<String, Source> topicToNewsSources =
+            Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +65,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void addArticlesForSource(String sourceId, List<Article> articles) {
         articlesBySource.putAll(sourceId, articles);
+    }
+
+    public void addSourcesForTopic(String topic, List<Source> sources) {
+        topicToNewsSources.putAll(topic, sources);
     }
 
 }

@@ -25,16 +25,20 @@ public class GetArticlesRunnable implements Runnable {
 
     private final String apiKey;
     private final MainActivity mainActivity;
-    private final String sourceId;
+    private final List<String> sourceIds;
 
-    public GetArticlesRunnable(String apiKey, MainActivity mainActivity, String sourceId) {
+    public GetArticlesRunnable(String apiKey, MainActivity mainActivity, List<String> sourceIds) {
         this.apiKey = apiKey;
         this.mainActivity = mainActivity;
-        this.sourceId = sourceId;
+        this.sourceIds = sourceIds;
     }
 
     @Override
     public void run() {
+        sourceIds.forEach(this::requestArticlesForSource);
+    }
+
+    private void requestArticlesForSource(String sourceId) {
         String responseJson = requestData(sourceId);
         try {
             mainActivity.addArticlesForSource(sourceId, parse(responseJson));

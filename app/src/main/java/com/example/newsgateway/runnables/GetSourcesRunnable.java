@@ -18,6 +18,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class GetSourcesRunnable implements Runnable {
 
@@ -25,6 +26,7 @@ public class GetSourcesRunnable implements Runnable {
 
     private final String apiKey;
     private final MainActivity mainActivity;
+    private List<Source> sources;
 
     public GetSourcesRunnable(String apiKey, MainActivity mainActivity) {
         this.apiKey = apiKey;
@@ -35,10 +37,18 @@ public class GetSourcesRunnable implements Runnable {
     public void run() {
         String jsonResponse = requestData();
         try {
-            mainActivity.addSources(parse(jsonResponse));
+            sources = parse(jsonResponse);
+            mainActivity.addSources(sources);
         } catch (JSONException e) {
             Log.e(TAG, "Could not parse sources: " + e.getLocalizedMessage());
+            return;
         }
+
+        List<String> sourceIds = sources.stream().map(Source::getId)
+                .collect(Collectors.toList());
+        new Thread(new GetArticlesRunnable(apiKey, mainActivity, sourceIds)).start();
+
+        // todo add to topic/news source map
     }
 
     private List<Source> parse(String jsonResponse) throws JSONException {
