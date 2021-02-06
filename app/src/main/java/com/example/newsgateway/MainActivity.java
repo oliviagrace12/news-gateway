@@ -18,11 +18,11 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String API_KEY = "";
+    private static final String API_KEY = "ccd9717c681c4e59a0194a092a52a1a9";
     private final List<Source> sources = new ArrayList<>();
     private final Multimap<String, Article> articlesBySource =
             Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
-    private Multimap<String, Source> topicToNewsSources =
+    private Multimap<String, Source> categoryToNewsSources =
             Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
 
     @Override
@@ -67,8 +67,8 @@ public class MainActivity extends AppCompatActivity {
         articlesBySource.putAll(sourceId, articles);
     }
 
-    public void addSourcesForTopic(String topic, List<Source> sources) {
-        topicToNewsSources.putAll(topic, sources);
+    public void addSourceForCategory(String category, Source sources) {
+        categoryToNewsSources.put(category, sources);
     }
 
 }

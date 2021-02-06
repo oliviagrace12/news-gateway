@@ -48,7 +48,10 @@ public class GetSourcesRunnable implements Runnable {
                 .collect(Collectors.toList());
         new Thread(new GetArticlesRunnable(apiKey, mainActivity, sourceIds)).start();
 
-        // todo add to topic/news source map
+        sources.forEach(source -> {
+            mainActivity.addSourceForCategory(source.getCategory(), source);
+        });
+        // todo same for countries and languages
     }
 
     private List<Source> parse(String jsonResponse) throws JSONException {
