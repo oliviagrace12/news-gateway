@@ -44,14 +44,16 @@ public class GetSourcesRunnable implements Runnable {
             return;
         }
 
-        List<String> sourceIds = sources.stream().map(Source::getId)
-                .collect(Collectors.toList());
-        new Thread(new GetArticlesRunnable(apiKey, mainActivity, sourceIds)).start();
+//        List<String> sourceIds = sources.stream().map(Source::getId)
+//                .collect(Collectors.toList());
+//        new Thread(new GetArticlesRunnable(apiKey, mainActivity, sourceIds)).start();
 
         sources.forEach(source -> {
             mainActivity.addSourceForCategory(source.getCategory(), source);
+            mainActivity.addSourceForLanguage(source.getLanguage(), source);
+            mainActivity.addSourceForCountry(source.getCountry(), source);
         });
-        // todo same for countries and languages
+        mainActivity.runOnUiThread(mainActivity::setupInitialMenu);
     }
 
     private List<Source> parse(String jsonResponse) throws JSONException {
