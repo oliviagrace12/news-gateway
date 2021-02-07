@@ -1,13 +1,22 @@
 package com.example.newsgateway;
 
+import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.Fragment;
+import androidx.viewpager.widget.ViewPager;
 
 import android.graphics.Point;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SubMenu;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
 
 import com.example.newsgateway.domain.Article;
 import com.example.newsgateway.domain.Source;
@@ -16,13 +25,25 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
     private static final String API_KEY = "2191b2ac06234333a9a8fa96d2e1b90e";
 
     private Menu menu;
@@ -31,8 +52,6 @@ public class MainActivity extends AppCompatActivity {
     private SubMenu languagesSubMenu;
 
     private final List<Source> sources = new ArrayList<>();
-    private final Multimap<String, Article> articlesBySource =
-            Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
     private Multimap<String, Source> topicToSources =
             Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
     private Multimap<String, Source> languageToSources =
@@ -42,6 +61,13 @@ public class MainActivity extends AppCompatActivity {
     private Map<String, String> countryCodeToName = new HashMap<>();
     private Map<String, String> languageCodeToName = new HashMap<>();
 
+    private DrawerLayout mDrawerLayout;
+    private ListView mDrawerList;
+    private ActionBarDrawerToggle mDrawerToggle;
+    private List<Fragment> fragments;
+    private MyPageAdapter pageAdapter;
+    private ViewPager pager;
+    private List<String> items = new ArrayList<>();
     public static int screenWidth, screenHeight;
 
     @Override
@@ -58,26 +84,103 @@ public class MainActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayShowHomeEnabled(true);
         getSupportActionBar().setTitle(getString(R.string.app_name));
 
+        mDrawerLayout = findViewById(R.id.drawer_layout);
+        mDrawerList = findViewById(R.id.left_drawer);
+
+        mDrawerList.setOnItemClickListener(
+                (parent, view, position, id) -> selectItem(position)
+        );
+
+        mDrawerList.setAdapter(new ArrayAdapter<>(this,   // <== Important!
+                R.layout.drawer_list_item, items));
+
+        // Set up the drawer item click callback method
+        mDrawerList.setOnItemClickListener(
+                (parent, view, position, id) -> {
+                    selectItem(position);
+                    mDrawerLayout.closeDrawer(mDrawerList);
+                }
+        );
+
+        mDrawerToggle = new ActionBarDrawerToggle(   // <== Important!
+                this,                /* host Activity */
+                mDrawerLayout,             /* DrawerLayout object */
+                R.string.drawer_open,  /* "open drawer" description for accessibility */
+                R.string.drawer_close  /* "close drawer" description for accessibility */
+        );
+
+        // ??
+        if (getSupportActionBar() != null) {  // <== Important!
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setHomeButtonEnabled(true);
+        }
+        //
+
         populateCountryNames();
         populateLanguageNames();
         requestSourceData();
     }
 
+    private void selectItem(int position) {
+
+    }
+
     private void populateLanguageNames() {
-        // todo load from provided json file
+        try {
+            InputStream is = getResources().openRawResource(R.raw.language_codes);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+
+            JSONArray languagesArray = new JSONObject(sb.toString()).getJSONArray("languages");
+            for (int i = 0; i < languagesArray.length(); i++) {
+                JSONObject languageJson = languagesArray.getJSONObject(i);
+                languageCodeToName.put(
+                        languageJson.getString("code"), languageJson.getString("name"));
+            }
+        } catch (IOException | JSONException e) {
+            Log.e(TAG, "Could not parse language codes/names: " + e.getLocalizedMessage());
+        }
     }
 
     private void populateCountryNames() {
-        // todo load from provided json file
+        try {
+            InputStream is = getResources().openRawResource(R.raw.country_codes);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+
+            JSONArray countriesArray = new JSONObject(sb.toString()).getJSONArray("countries");
+            for (int i = 0; i < countriesArray.length(); i++) {
+                JSONObject countryJson = countriesArray.getJSONObject(i);
+                countryCodeToName.put(
+                        countryJson.getString("code"), countryJson.getString("name"));
+            }
+        } catch (IOException | JSONException e) {
+            Log.e(TAG, "Could not parse country codes/names: " + e.getLocalizedMessage());
+        }
     }
 
     public void setupInitialMenu() {
         topicsSubMenu = menu.addSubMenu(getString(R.string.topics));
-        topicToSources.keySet().forEach(topic -> topicsSubMenu.add(topic));
+        topicsSubMenu.add(R.string.lower_case_all);
+        topicToSources.keySet().stream().sorted().forEach(topic -> topicsSubMenu.add(topic));
+
         countriesSubMenu = menu.addSubMenu(getString(R.string.countries));
-        countryToSources.keySet().forEach(country -> countriesSubMenu.add(country));
+        countriesSubMenu.add(R.string.upper_case_all);
+        countryToSources.keySet().stream().sorted().forEach(country -> countriesSubMenu.add(country));
+
         languagesSubMenu = menu.addSubMenu(getString(R.string.languages));
-        languageToSources.keySet().forEach(language -> languagesSubMenu.add(language));
+        languagesSubMenu.add(R.string.upper_case_all);
+        languageToSources.keySet().stream().sorted().forEach(language -> languagesSubMenu.add(language));
     }
 
     private void requestSourceData() {
@@ -92,14 +195,30 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-//        if (item.getTitle() == getString(R.string.topics)) {
-//            menu.(item.getTitle());
-//            for (String category : categoryToSources.keySet()) {
-//                menu.add(category);
-//            }
-//        } else if (item.getTitle() == getString(R.string.languages)) {
-//        } else if (item.getTitle() == getString(R.string.countries)) {
-//        }
+        if (mDrawerToggle.onOptionsItemSelected(item)) {
+            Log.d(TAG, "onOptionsItemSelected: mDrawerToggle " + item);
+            return true;
+        }
+
+        String selection = item.getTitle().toString();
+        if (countryToSources.containsKey(selection)) {
+            items.clear();
+            Collection<Source> sources = countryToSources.get(selection);
+            items.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
+            ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
+        } else if (languageToSources.containsKey(selection)) {
+            items.clear();
+            Collection<Source> sources = languageToSources.get(selection);
+            items.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
+            ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
+        } else if (topicToSources.containsKey(selection)) {
+            items.clear();
+            Collection<Source> sources = topicToSources.get(selection);
+            items.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
+            ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
+        }
+
+
         return true;
     }
 
@@ -108,19 +227,15 @@ public class MainActivity extends AppCompatActivity {
         sources.addAll(newSources);
     }
 
-    public void addArticlesForSource(String sourceId, List<Article> articles) {
-        articlesBySource.putAll(sourceId, articles);
-    }
-
     public void addSourceForCategory(String category, Source source) {
         topicToSources.put(category, source);
     }
 
     public void addSourceForLanguage(String language, Source source) {
-        languageToSources.put(language, source);
+        languageToSources.put(languageCodeToName.get(language.toUpperCase()), source);
     }
 
-    public void addSourceForCountry(String country, Source source) {
-        countryToSources.put(country, source);
+    public void addSourceForCountry(String countryCode, Source source) {
+        countryToSources.put(countryCodeToName.get(countryCode.toUpperCase()), source);
     }
 }

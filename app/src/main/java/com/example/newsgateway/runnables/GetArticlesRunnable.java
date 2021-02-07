@@ -18,6 +18,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class GetArticlesRunnable implements Runnable {
 
@@ -35,51 +36,31 @@ public class GetArticlesRunnable implements Runnable {
 
     @Override
     public void run() {
-        sourceIds.forEach(this::requestArticlesForSource);
+        requestArticlesForSource(sourceIds);
     }
 
-    private void requestArticlesForSource(String sourceId) {
+    private void requestArticlesForSource(List<String> sourceId) {
         String responseJson = requestData(sourceId);
         try {
-            mainActivity.addArticlesForSource(sourceId, parse(responseJson));
+            List<Article> articles = parse(responseJson);
         } catch (JSONException e) {
             Log.e(TAG, "Could not parse sources: " + e.getLocalizedMessage());
         }
     }
 
-    private List<Article> parse(String responseJson) throws JSONException {
-        JSONObject responseObject = new JSONObject(responseJson);
-        JSONArray articlesArray = responseObject.getJSONArray("articles");
-        List<Article> articles = new ArrayList<>();
-        for (int i = 0; i < articlesArray.length(); i++) {
-            JSONObject articleJson = articlesArray.getJSONObject(i);
-            Article article = new Article();
-            article.setAuthor(articleJson.getString("author"));
-            article.setDescription(articleJson.getString("description"));
-            article.setPublishedAt(articleJson.getString("publishedAt"));
-            article.setTitle(articleJson.getString("title"));
-            article.setUrl(articleJson.getString("url"));
-            article.setUrlToImage(articleJson.getString("urlToImage"));
-
-            articles.add(article);
-        }
-
-        return articles;
-    }
-
-    private String createUrlString(String sourceId) {
+    private String createUrlString(List<String> sourceIds) {
         return new Uri.Builder()
                 .scheme("https")
                 .authority("newsapi.org")
                 .appendPath("v2")
                 .appendPath("top-headlines")
-                .appendQueryParameter("sources", sourceId)
+                .appendQueryParameter("sources", sourceIds.stream().collect(Collectors.joining(",")))
                 .appendQueryParameter("apiKey", apiKey)
                 .build().toString();
     }
 
-    private String requestData(String sourceId) {
-        String urlString = createUrlString(sourceId);
+    private String requestData(List<String> sourceIds) {
+        String urlString = createUrlString(sourceIds);
         Log.i(TAG, "Requesting data using URL: " + urlString);
         HttpURLConnection conn = null;
         StringBuilder stringBuilder = new StringBuilder();
@@ -107,5 +88,25 @@ public class GetArticlesRunnable implements Runnable {
         }
 
         return stringBuilder.toString();
+    }
+
+    private List<Article> parse(String responseJson) throws JSONException {
+        JSONObject responseObject = new JSONObject(responseJson);
+        JSONArray articlesArray = responseObject.getJSONArray("articles");
+        List<Article> articles = new ArrayList<>();
+        for (int i = 0; i < articlesArray.length(); i++) {
+            JSONObject articleJson = articlesArray.getJSONObject(i);
+            Article article = new Article();
+            article.setAuthor(articleJson.getString("author"));
+            article.setDescription(articleJson.getString("description"));
+            article.setPublishedAt(articleJson.getString("publishedAt"));
+            article.setTitle(articleJson.getString("title"));
+            article.setUrl(articleJson.getString("url"));
+            article.setUrlToImage(articleJson.getString("urlToImage"));
+
+            articles.add(article);
+        }
+
+        return articles;
     }
 }
