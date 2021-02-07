@@ -13,13 +13,12 @@ import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SubMenu;
-import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 import com.example.newsgateway.domain.Article;
 import com.example.newsgateway.domain.Source;
+import com.example.newsgateway.runnables.GetArticlesBySourceRunnable;
 import com.example.newsgateway.runnables.GetSourcesRunnable;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -60,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
             Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
     private Map<String, String> countryCodeToName = new HashMap<>();
     private Map<String, String> languageCodeToName = new HashMap<>();
+    private Map<String, String> sourceNameToId = new HashMap<>();
 
     private DrawerLayout mDrawerLayout;
     private ListView mDrawerList;
@@ -67,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
     private List<Fragment> fragments;
     private MyPageAdapter pageAdapter;
     private ViewPager pager;
-    private List<String> items = new ArrayList<>();
+    private List<String> sourceNames = new ArrayList<>();
     public static int screenWidth, screenHeight;
 
     @Override
@@ -86,13 +86,13 @@ public class MainActivity extends AppCompatActivity {
 
         mDrawerLayout = findViewById(R.id.drawer_layout);
         mDrawerList = findViewById(R.id.left_drawer);
-
-        mDrawerList.setOnItemClickListener(
-                (parent, view, position, id) -> selectItem(position)
-        );
+        fragments = new ArrayList<>();
+        pageAdapter = new MyPageAdapter(getSupportFragmentManager(), fragments);
+        pager = findViewById(R.id.viewpager);
+        pager.setAdapter(pageAdapter);
 
         mDrawerList.setAdapter(new ArrayAdapter<>(this,   // <== Important!
-                R.layout.drawer_list_item, items));
+                R.layout.drawer_list_item, sourceNames));
 
         // Set up the drawer item click callback method
         mDrawerList.setOnItemClickListener(
@@ -113,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {  // <== Important!
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setHomeButtonEnabled(true);
+            getSupportActionBar().setHomeAsUpIndicator(R.drawable.round_menu_white_20);
         }
         //
 
@@ -122,7 +123,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void selectItem(int position) {
-
+        pager.setBackground(null);
+        new Thread(new GetArticlesBySourceRunnable(API_KEY, this, sourceNames.get(position))).start();
+        mDrawerLayout.closeDrawer(mDrawerList);
     }
 
     private void populateLanguageNames() {
@@ -139,8 +142,9 @@ public class MainActivity extends AppCompatActivity {
             JSONArray languagesArray = new JSONObject(sb.toString()).getJSONArray("languages");
             for (int i = 0; i < languagesArray.length(); i++) {
                 JSONObject languageJson = languagesArray.getJSONObject(i);
-                languageCodeToName.put(
-                        languageJson.getString("code"), languageJson.getString("name"));
+                String code = languageJson.getString("code");
+                String name = languageJson.getString("name");
+                languageCodeToName.put(code, name);
             }
         } catch (IOException | JSONException e) {
             Log.e(TAG, "Could not parse language codes/names: " + e.getLocalizedMessage());
@@ -161,8 +165,9 @@ public class MainActivity extends AppCompatActivity {
             JSONArray countriesArray = new JSONObject(sb.toString()).getJSONArray("countries");
             for (int i = 0; i < countriesArray.length(); i++) {
                 JSONObject countryJson = countriesArray.getJSONObject(i);
-                countryCodeToName.put(
-                        countryJson.getString("code"), countryJson.getString("name"));
+                String code = countryJson.getString("code");
+                String name = countryJson.getString("name");
+                countryCodeToName.put(code, name);
             }
         } catch (IOException | JSONException e) {
             Log.e(TAG, "Could not parse country codes/names: " + e.getLocalizedMessage());
@@ -202,22 +207,21 @@ public class MainActivity extends AppCompatActivity {
 
         String selection = item.getTitle().toString();
         if (countryToSources.containsKey(selection)) {
-            items.clear();
+            sourceNames.clear();
             Collection<Source> sources = countryToSources.get(selection);
-            items.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
+            sourceNames.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
             ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
         } else if (languageToSources.containsKey(selection)) {
-            items.clear();
+            sourceNames.clear();
             Collection<Source> sources = languageToSources.get(selection);
-            items.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
+            sourceNames.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
             ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
         } else if (topicToSources.containsKey(selection)) {
-            items.clear();
+            sourceNames.clear();
             Collection<Source> sources = topicToSources.get(selection);
-            items.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
+            sourceNames.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
             ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
         }
-
 
         return true;
     }
@@ -237,5 +241,35 @@ public class MainActivity extends AppCompatActivity {
 
     public void addSourceForCountry(String countryCode, Source source) {
         countryToSources.put(countryCodeToName.get(countryCode.toUpperCase()), source);
+    }
+
+    public void addSourceIdForName(String sourceId, String sourceName) {
+        sourceNameToId.put(sourceName, sourceId);
+    }
+
+    public void setFragments(String sourceName, List<Article> articles) {
+        pager.setBackground(getDrawable(R.drawable.loading));
+        if (articles.isEmpty()) {
+            getSupportActionBar().setTitle(sourceName);
+            fragments.clear();
+            pageAdapter.notifyDataSetChanged();
+            pager.setCurrentItem(0);
+            pager.setBackground(getDrawable(R.drawable.newspaper_coffee));
+            return;
+        }
+        getSupportActionBar().setTitle(sourceName);
+        for (int i = 0; i < pageAdapter.getCount(); i++) {
+            pageAdapter.notifyChangeInPosition(i);
+        }
+        fragments.clear();
+
+        for (int i = 0; i < articles.size(); i++) {
+            fragments.add(
+                    ArticleFragment.newInstance(articles.get(i), i+1, articles.size()));
+        }
+
+        pageAdapter.notifyDataSetChanged();
+        pager.setCurrentItem(0);
+        pager.setBackground(null);
     }
 }

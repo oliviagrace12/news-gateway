@@ -1,6 +1,8 @@
 package com.example.newsgateway.domain;
 
-public class Article {
+import java.io.Serializable;
+
+public class Article implements Serializable {
 
     private String author;
     private String title;
@@ -8,6 +10,7 @@ public class Article {
     private String url;
     private String urlToImage;
     private String publishedAt;
+    private String sourceName;
 
     public String getAuthor() {
         return author;
@@ -55,5 +58,13 @@ public class Article {
 
     public void setPublishedAt(String publishedAt) {
         this.publishedAt = publishedAt;
+    }
+
+    public String getSourceName() {
+        return sourceName;
+    }
+
+    public void setSourceName(String sourceName) {
+        this.sourceName = sourceName;
     }
 }

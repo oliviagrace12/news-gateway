@@ -9,12 +9,13 @@ import java.util.List;
 
 public class MyPageAdapter extends FragmentPagerAdapter {
 
-    private List<Fragment> fragments;
+    private final List<Fragment> fragments;
     private long baseId = 0;
 
 
-    MyPageAdapter(FragmentManager fm) {
+    MyPageAdapter(FragmentManager fm, List<Fragment> fragments) {
         super(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
+        this.fragments = fragments;
     }
 
     @Override

@@ -20,47 +20,48 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class GetArticlesRunnable implements Runnable {
+public class GetArticlesBySourceRunnable implements Runnable {
 
     private static final String TAG = "GetArticlesRunnable";
 
     private final String apiKey;
     private final MainActivity mainActivity;
-    private final List<String> sourceIds;
+    private final String sourceId;
 
-    public GetArticlesRunnable(String apiKey, MainActivity mainActivity, List<String> sourceIds) {
+    public GetArticlesBySourceRunnable(String apiKey, MainActivity mainActivity, String sourceId) {
         this.apiKey = apiKey;
         this.mainActivity = mainActivity;
-        this.sourceIds = sourceIds;
+        this.sourceId = sourceId;
     }
 
     @Override
     public void run() {
-        requestArticlesForSource(sourceIds);
+        requestArticlesForSource();
     }
 
-    private void requestArticlesForSource(List<String> sourceId) {
-        String responseJson = requestData(sourceId);
+    private void requestArticlesForSource() {
+        String responseJson = requestData();
         try {
             List<Article> articles = parse(responseJson);
+            mainActivity.runOnUiThread(() -> mainActivity.setFragments(sourceId, articles));
         } catch (JSONException e) {
             Log.e(TAG, "Could not parse sources: " + e.getLocalizedMessage());
         }
     }
 
-    private String createUrlString(List<String> sourceIds) {
+    private String createUrlString() {
         return new Uri.Builder()
                 .scheme("https")
                 .authority("newsapi.org")
                 .appendPath("v2")
                 .appendPath("top-headlines")
-                .appendQueryParameter("sources", sourceIds.stream().collect(Collectors.joining(",")))
+                .appendQueryParameter("sources", sourceId)
                 .appendQueryParameter("apiKey", apiKey)
                 .build().toString();
     }
 
-    private String requestData(List<String> sourceIds) {
-        String urlString = createUrlString(sourceIds);
+    private String requestData() {
+        String urlString = createUrlString();
         Log.i(TAG, "Requesting data using URL: " + urlString);
         HttpURLConnection conn = null;
         StringBuilder stringBuilder = new StringBuilder();
@@ -103,6 +104,7 @@ public class GetArticlesRunnable implements Runnable {
             article.setTitle(articleJson.getString("title"));
             article.setUrl(articleJson.getString("url"));
             article.setUrlToImage(articleJson.getString("urlToImage"));
+            article.setSourceName(articleJson.getJSONObject("source").getString("name"));
 
             articles.add(article);
         }
