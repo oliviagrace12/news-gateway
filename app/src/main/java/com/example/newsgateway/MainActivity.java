@@ -2,6 +2,7 @@ package com.example.newsgateway;
 
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.viewpager.widget.ViewPager;
@@ -43,23 +44,22 @@ import java.util.stream.Collectors;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
-    private static final String API_KEY = "2191b2ac06234333a9a8fa96d2e1b90e";
+    private static final String API_KEY = "ccd9717c681c4e59a0194a092a52a1a9";
 
     private Menu menu;
     private SubMenu topicsSubMenu;
     private SubMenu countriesSubMenu;
     private SubMenu languagesSubMenu;
 
-    private final List<Source> sources = new ArrayList<>();
-    private Multimap<String, Source> topicToSources =
+    private final List<String> allSources = new ArrayList<>();
+    private final Multimap<String, String> topicToSources =
             Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
-    private Multimap<String, Source> languageToSources =
+    private final Multimap<String, String> languageToSources =
             Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
-    private Multimap<String, Source> countryToSources =
+    private final Multimap<String, String> countryToSources =
             Multimaps.synchronizedListMultimap(ArrayListMultimap.create());
-    private Map<String, String> countryCodeToName = new HashMap<>();
-    private Map<String, String> languageCodeToName = new HashMap<>();
-    private Map<String, String> sourceNameToId = new HashMap<>();
+    private final Map<String, String> countryCodeToName = new HashMap<>();
+    private final Map<String, String> languageCodeToName = new HashMap<>();
 
     private DrawerLayout mDrawerLayout;
     private ListView mDrawerList;
@@ -109,13 +109,11 @@ public class MainActivity extends AppCompatActivity {
                 R.string.drawer_close  /* "close drawer" description for accessibility */
         );
 
-        // ??
-        if (getSupportActionBar() != null) {  // <== Important!
+        if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setHomeButtonEnabled(true);
             getSupportActionBar().setHomeAsUpIndicator(R.drawable.round_menu_white_20);
         }
-        //
 
         populateCountryNames();
         populateLanguageNames();
@@ -126,6 +124,34 @@ public class MainActivity extends AppCompatActivity {
         pager.setBackground(null);
         new Thread(new GetArticlesBySourceRunnable(API_KEY, this, sourceNames.get(position))).start();
         mDrawerLayout.closeDrawer(mDrawerList);
+    }
+
+    public void setFragments(String sourceName, List<Article> articles) {
+        Log.i(TAG, "Setting new articles in fragments: " + articles.stream());
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(sourceName);
+        }
+
+        if (articles.isEmpty()) {
+            fragments.clear();
+            pageAdapter.notifyDataSetChanged();
+            pager.setCurrentItem(0);
+            pager.setBackground(ContextCompat.getDrawable(this, R.drawable.newspaper_coffee));
+            return;
+        }
+
+        for (int i = 0; i < pageAdapter.getCount(); i++) {
+            pageAdapter.notifyChangeInPosition(i);
+        }
+        fragments.clear();
+
+        for (int i = 0; i < articles.size(); i++) {
+            fragments.add(
+                    ArticleFragment.newInstance(articles.get(i), i+1, articles.size()));
+        }
+
+        pageAdapter.notifyDataSetChanged();
+        pager.setCurrentItem(0);
     }
 
     private void populateLanguageNames() {
@@ -205,71 +231,37 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
 
+        sourceNames.clear();
+
         String selection = item.getTitle().toString();
-        if (countryToSources.containsKey(selection)) {
-            sourceNames.clear();
-            Collection<Source> sources = countryToSources.get(selection);
-            sourceNames.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
-            ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
+        if (selection.equalsIgnoreCase("all")) {
+            sourceNames.addAll(allSources);
+        } else if (countryToSources.containsKey(selection)) {
+            sourceNames.addAll(countryToSources.get(selection));
         } else if (languageToSources.containsKey(selection)) {
-            sourceNames.clear();
-            Collection<Source> sources = languageToSources.get(selection);
-            sourceNames.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
-            ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
+            sourceNames.addAll(languageToSources.get(selection));
         } else if (topicToSources.containsKey(selection)) {
-            sourceNames.clear();
-            Collection<Source> sources = topicToSources.get(selection);
-            sourceNames.addAll(sources.stream().map(Source::getName).collect(Collectors.toList()));
-            ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
+            sourceNames.addAll(topicToSources.get(selection));
         }
+
+        ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
 
         return true;
     }
 
-    public void addSources(List<Source> newSources) {
-        sources.clear();
-        sources.addAll(newSources);
-    }
-
-    public void addSourceForCategory(String category, Source source) {
+    public void addSourceForCategory(String category, String source) {
         topicToSources.put(category, source);
     }
 
-    public void addSourceForLanguage(String language, Source source) {
+    public void addSourceForLanguage(String language, String source) {
         languageToSources.put(languageCodeToName.get(language.toUpperCase()), source);
     }
 
-    public void addSourceForCountry(String countryCode, Source source) {
+    public void addSourceForCountry(String countryCode, String source) {
         countryToSources.put(countryCodeToName.get(countryCode.toUpperCase()), source);
     }
 
-    public void addSourceIdForName(String sourceId, String sourceName) {
-        sourceNameToId.put(sourceName, sourceId);
-    }
-
-    public void setFragments(String sourceName, List<Article> articles) {
-        pager.setBackground(getDrawable(R.drawable.loading));
-        if (articles.isEmpty()) {
-            getSupportActionBar().setTitle(sourceName);
-            fragments.clear();
-            pageAdapter.notifyDataSetChanged();
-            pager.setCurrentItem(0);
-            pager.setBackground(getDrawable(R.drawable.newspaper_coffee));
-            return;
-        }
-        getSupportActionBar().setTitle(sourceName);
-        for (int i = 0; i < pageAdapter.getCount(); i++) {
-            pageAdapter.notifyChangeInPosition(i);
-        }
-        fragments.clear();
-
-        for (int i = 0; i < articles.size(); i++) {
-            fragments.add(
-                    ArticleFragment.newInstance(articles.get(i), i+1, articles.size()));
-        }
-
-        pageAdapter.notifyDataSetChanged();
-        pager.setCurrentItem(0);
-        pager.setBackground(null);
+    public void addAllSources(List<String> sources) {
+        allSources.addAll(sources.stream().sorted().collect(Collectors.toList()));
     }
 }

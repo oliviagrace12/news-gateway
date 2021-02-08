@@ -26,7 +26,6 @@ public class GetSourcesRunnable implements Runnable {
 
     private final String apiKey;
     private final MainActivity mainActivity;
-    private List<Source> sources;
 
     public GetSourcesRunnable(String apiKey, MainActivity mainActivity) {
         this.apiKey = apiKey;
@@ -36,20 +35,21 @@ public class GetSourcesRunnable implements Runnable {
     @Override
     public void run() {
         String jsonResponse = requestData();
+        List<Source> sources;
         try {
             sources = parse(jsonResponse);
-            mainActivity.addSources(sources);
         } catch (JSONException e) {
             Log.e(TAG, "Could not parse sources: " + e.getLocalizedMessage());
             return;
         }
 
+        mainActivity.addAllSources(sources.stream().map(Source::getName).collect(Collectors.toList()));
         sources.forEach(source -> {
-            mainActivity.addSourceForCategory(source.getCategory(), source);
-            mainActivity.addSourceForLanguage(source.getLanguage(), source);
-            mainActivity.addSourceForCountry(source.getCountry(), source);
-            mainActivity.addSourceIdForName(source.getId(), source.getName());
+            mainActivity.addSourceForCategory(source.getCategory(), source.getName());
+            mainActivity.addSourceForLanguage(source.getLanguage(), source.getName());
+            mainActivity.addSourceForCountry(source.getCountry(), source.getName());
         });
+
         mainActivity.runOnUiThread(mainActivity::setupInitialMenu);
     }
 

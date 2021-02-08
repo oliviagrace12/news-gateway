@@ -82,6 +82,7 @@ public class GetArticlesBySourceRunnable implements Runnable {
             while ((line = reader.readLine()) != null) {
                 stringBuilder.append(line).append('\n');
             }
+            is.close();
             Log.d(TAG, "Response: " + stringBuilder.toString());
         } catch (IOException ex) {
             Log.e(TAG, "Error in getting info: " + ex.getLocalizedMessage(), ex);
