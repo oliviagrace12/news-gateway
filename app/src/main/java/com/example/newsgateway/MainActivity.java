@@ -238,12 +238,16 @@ public class MainActivity extends AppCompatActivity {
         String selection = item.getTitle().toString();
         if (selection.equalsIgnoreCase("all")) {
             sourceNames.addAll(allSources);
+            mDrawerLayout.openDrawer(mDrawerList);
         } else if (countryToSources.containsKey(selection)) {
             sourceNames.addAll(countryToSources.get(selection));
+            mDrawerLayout.openDrawer(mDrawerList);
         } else if (languageToSources.containsKey(selection)) {
             sourceNames.addAll(languageToSources.get(selection));
+            mDrawerLayout.openDrawer(mDrawerList);
         } else if (topicToSources.containsKey(selection)) {
             sourceNames.addAll(topicToSources.get(selection));
+            mDrawerLayout.openDrawer(mDrawerList);
         }
 
         ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
