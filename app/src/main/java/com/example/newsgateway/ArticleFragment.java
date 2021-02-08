@@ -1,5 +1,7 @@
 package com.example.newsgateway;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -15,10 +17,13 @@ import com.example.newsgateway.domain.Article;
 import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 
+import java.net.URI;
 
-public class ArticleFragment extends Fragment {
+
+public class ArticleFragment extends Fragment implements View.OnClickListener {
 
     private static final String TAG = "ArticleFragment";
+    private Article article;
 
     public ArticleFragment() {
     }
@@ -45,12 +50,17 @@ public class ArticleFragment extends Fragment {
         TextView descriptionView = fragmentLayout.findViewById(R.id.fragmentDescription);
         TextView fragmentNumberView = fragmentLayout.findViewById(R.id.fragmentNumber);
 
+        titleView.setOnClickListener(this);
+        imageView.setOnClickListener(this);
+        descriptionView.setOnClickListener(this);
+
         Bundle args = getArguments();
         if (args == null) {
             return null;
         }
 
         Article article = (Article) args.getSerializable("article");
+        this.article = article;
 
         titleView.setText(article.getTitle());
         dateView.setText(article.getPublishedAt());
@@ -76,5 +86,15 @@ public class ArticleFragment extends Fragment {
                         Log.e(TAG, "Could not load image for fragment: " + e.getLocalizedMessage());
                     }
                 });
+    }
+
+    public void goToArticle(View view) {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(article.getUrl()));
+        startActivity(intent);
+    }
+
+    @Override
+    public void onClick(View v) {
+        goToArticle(v);
     }
 }

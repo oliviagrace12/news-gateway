@@ -11,4 +11,5 @@
     <string name="drawer_open">Open drawer</string>
     <string name="drawer_close">Close drawer</string>
     <string name="fragment_number">%1$d of %2$d</string>
+    <string name="prefsFileKey">"MY_PREFS_KEY"</string>
 </resources>

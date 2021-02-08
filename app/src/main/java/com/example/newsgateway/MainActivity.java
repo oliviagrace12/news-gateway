@@ -44,7 +44,9 @@ import java.util.stream.Collectors;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
-    private static final String API_KEY = "ccd9717c681c4e59a0194a092a52a1a9";
+    private static final String API_KEY = "d59033f2b3eb480eb8a55820ec281db6";
+
+    private MyProjectSharedPreference sharedPreferences;
 
     private Menu menu;
     private SubMenu topicsSubMenu;
