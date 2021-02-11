@@ -1,10 +1,13 @@
 package com.example.newsgateway;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentPagerAdapter;
 import androidx.viewpager.widget.ViewPager;
 
 import android.graphics.Point;
@@ -89,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
         mDrawerLayout = findViewById(R.id.drawer_layout);
         mDrawerList = findViewById(R.id.left_drawer);
         fragments = new ArrayList<>();
-        pageAdapter = new MyPageAdapter(getSupportFragmentManager(), fragments);
+        pageAdapter = new MyPageAdapter(getSupportFragmentManager());
         pager = findViewById(R.id.viewpager);
         pager.setAdapter(pageAdapter);
 
@@ -129,12 +132,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void setFragments(String sourceName, List<Article> articles) {
-        Log.i(TAG, "Setting new articles in fragments: " + articles.stream());
+        Log.i(TAG, "Setting new articles in fragments: [" + articles.stream().map(Article::getSourceName).collect(Collectors.joining(",")) + "]");
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(sourceName);
         }
 
         if (articles.isEmpty()) {
+            for (int i = 0; i < pageAdapter.getCount(); i++) {
+                pageAdapter.notifyChangeInPosition(i);
+            }
             fragments.clear();
             pageAdapter.notifyDataSetChanged();
             pager.setCurrentItem(0);
@@ -234,6 +240,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         sourceNames.clear();
+        mDrawerLayout.closeDrawer(mDrawerList);
 
         String selection = item.getTitle().toString();
         if (selection.equalsIgnoreCase("all")) {
@@ -270,4 +277,42 @@ public class MainActivity extends AppCompatActivity {
     public void addAllSources(List<String> sources) {
         allSources.addAll(sources.stream().sorted().collect(Collectors.toList()));
     }
+
+
+    private class MyPageAdapter extends FragmentPagerAdapter {
+        private long baseId = 0;
+
+        MyPageAdapter(FragmentManager fm) {
+            super(fm, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
+        }
+
+        @Override
+        public int getItemPosition(@NonNull Object object) {
+            return POSITION_NONE;
+        }
+
+        @NonNull
+        @Override
+        public Fragment getItem(int position) {
+            return fragments.get(position);
+        }
+
+        @Override
+        public int getCount() {
+            return fragments.size();
+        }
+
+        @Override
+        public long getItemId(int position) {
+            // give an ID different from position when position has been changed
+            return baseId + position;
+        }
+
+        void notifyChangeInPosition(int n) {
+            // shift the ID returned by getItemId outside the range of all previous fragments
+            baseId += getCount() + n;
+        }
+
+    }
+
 }
