@@ -2,6 +2,7 @@ package com.example.newsgateway;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -42,12 +43,13 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
-    private static final String API_KEY = "d59033f2b3eb480eb8a55820ec281db6";
+    private static final String API_KEY = "2191b2ac06234333a9a8fa96d2e1b90e";
 
     private MyProjectSharedPreference sharedPreferences;
 
@@ -134,18 +136,11 @@ public class MainActivity extends AppCompatActivity {
     public void setFragments(String sourceName, List<Article> articles) {
         Log.i(TAG, "Setting new articles in fragments: [" + articles.stream().map(Article::getSourceName).collect(Collectors.joining(",")) + "]");
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(sourceName);
-        }
-
-        if (articles.isEmpty()) {
-            for (int i = 0; i < pageAdapter.getCount(); i++) {
-                pageAdapter.notifyChangeInPosition(i);
+            if (articles.isEmpty()) {
+                setTitleWithNumberOfChoices(sourceNames.size());
+            } else {
+                getSupportActionBar().setTitle(sourceName);
             }
-            fragments.clear();
-            pageAdapter.notifyDataSetChanged();
-            pager.setCurrentItem(0);
-            pager.setBackground(ContextCompat.getDrawable(this, R.drawable.newspaper_coffee));
-            return;
         }
 
         for (int i = 0; i < pageAdapter.getCount(); i++) {
@@ -155,11 +150,24 @@ public class MainActivity extends AppCompatActivity {
 
         for (int i = 0; i < articles.size(); i++) {
             fragments.add(
-                    ArticleFragment.newInstance(articles.get(i), i+1, articles.size()));
+                    ArticleFragment.newInstance(articles.get(i), i + 1, articles.size()));
         }
 
         pageAdapter.notifyDataSetChanged();
         pager.setCurrentItem(0);
+
+        if (articles.isEmpty()) {
+            pager.setBackground(ContextCompat.getDrawable(this, R.drawable.newspaper_coffee));
+            showAlertDialogue(sourceName);
+        }
+    }
+
+    private void showAlertDialogue(String sourceName) {
+        new AlertDialog.Builder(this)
+                .setTitle("No articles found for " + sourceName)
+                .setPositiveButton("OK", ((dialog, which) -> {
+                }))
+                .create().show();
     }
 
     private void populateLanguageNames() {
@@ -214,11 +222,11 @@ public class MainActivity extends AppCompatActivity {
         topicToSources.keySet().stream().sorted().forEach(topic -> topicsSubMenu.add(topic));
 
         countriesSubMenu = menu.addSubMenu(getString(R.string.countries));
-        countriesSubMenu.add(R.string.upper_case_all);
+        countriesSubMenu.add(R.string.lower_case_all);
         countryToSources.keySet().stream().sorted().forEach(country -> countriesSubMenu.add(country));
 
         languagesSubMenu = menu.addSubMenu(getString(R.string.languages));
-        languagesSubMenu.add(R.string.upper_case_all);
+        languagesSubMenu.add(R.string.lower_case_all);
         languageToSources.keySet().stream().sorted().forEach(language -> languagesSubMenu.add(language));
     }
 
@@ -239,27 +247,47 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
 
-        sourceNames.clear();
-        mDrawerLayout.closeDrawer(mDrawerList);
+//        sourceNames.clear();
+//        mDrawerLayout.closeDrawer(mDrawerList);
 
         String selection = item.getTitle().toString();
         if (selection.equalsIgnoreCase("all")) {
+            sourceNames.clear();
             sourceNames.addAll(allSources);
             mDrawerLayout.openDrawer(mDrawerList);
         } else if (countryToSources.containsKey(selection)) {
-            sourceNames.addAll(countryToSources.get(selection));
+            Collection<String> sourcesFromCountry = countryToSources.get(selection);
+            List<String> newSourceNames = sourceNames.stream().filter(sourcesFromCountry::contains)
+                    .collect(Collectors.toList());
+            sourceNames.clear();
+            sourceNames.addAll(newSourceNames);
             mDrawerLayout.openDrawer(mDrawerList);
         } else if (languageToSources.containsKey(selection)) {
-            sourceNames.addAll(languageToSources.get(selection));
+            Collection<String> sourcesFromLanguage = languageToSources.get(selection);
+            List<String> newSourceNames = sourceNames.stream().filter(sourcesFromLanguage::contains)
+                    .collect(Collectors.toList());
+            sourceNames.clear();
+            sourceNames.addAll(newSourceNames);
             mDrawerLayout.openDrawer(mDrawerList);
         } else if (topicToSources.containsKey(selection)) {
-            sourceNames.addAll(topicToSources.get(selection));
+            Collection<String> sourcesFromTopic = topicToSources.get(selection);
+            List<String> newSourceNames = sourceNames.stream().filter(sourcesFromTopic::contains)
+                    .collect(Collectors.toList());
+            sourceNames.clear();
+            sourceNames.addAll(newSourceNames);
             mDrawerLayout.openDrawer(mDrawerList);
         }
 
         ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
+        setTitleWithNumberOfChoices(sourceNames.size());
 
         return true;
+    }
+
+    public void setTitleWithNumberOfChoices(int choices) {
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(getString(R.string.app_name) + "(" + choices + ")");
+        }
     }
 
     public void addSourceForCategory(String category, String source) {
@@ -278,6 +306,11 @@ public class MainActivity extends AppCompatActivity {
         allSources.addAll(sources.stream().sorted().collect(Collectors.toList()));
     }
 
+    public void populateAllSourcesInDrawer() {
+        sourceNames.addAll(allSources);
+        ((ArrayAdapter) mDrawerList.getAdapter()).notifyDataSetChanged();
+        setTitleWithNumberOfChoices(sourceNames.size());
+    }
 
     private class MyPageAdapter extends FragmentPagerAdapter {
         private long baseId = 0;

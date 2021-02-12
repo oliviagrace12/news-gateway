@@ -50,7 +50,10 @@ public class GetSourcesRunnable implements Runnable {
             mainActivity.addSourceForCountry(source.getCountry(), source.getName());
         });
 
-        mainActivity.runOnUiThread(mainActivity::setupInitialMenu);
+        mainActivity.runOnUiThread(() -> {
+            mainActivity.setupInitialMenu();
+            mainActivity.populateAllSourcesInDrawer();
+        });
     }
 
     private List<Source> parse(String jsonResponse) throws JSONException {
